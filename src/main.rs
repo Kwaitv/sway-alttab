@@ -17,8 +17,21 @@ fn get_current_focused_id() -> Res<i64> {
         .ok_or_else(|| Err("Failed to get current Focused ID").unwrap())
 }
 
-fn handle_signal(last_focused: &Arc<Mutex<i64>>) -> Res<()> {
-    Connection::new()?.run_command(format!("[con_id={}] focus", last_focused.lock().unwrap()))?;
+fn handle_signal(last_focused: &Arc<Mutex<Vec<i64>>>) -> Res<()> {
+    let mut focused_ids = last_focused.lock().unwrap();
+    let mut valid_id = None;
+
+    for &id in focused_ids.iter().rev() {
+        if Connection::new()?.run_command(format!("[con_id={}] focus", id)).is_ok() {
+            valid_id = Some(id);
+            break;
+        }
+    }
+
+    if let Some(id) = valid_id {
+        focused_ids.retain(|&x| x != id);
+    }
+
     Ok(())
 }
 
@@ -26,7 +39,7 @@ fn unbind_key() -> Res<()> {
     let yml = load_yaml!("args.yml");
     let args = App::from_yaml(yml).version(crate_version!()).get_matches();
     let key_combo = args.value_of("combo").unwrap_or("Mod1+Tab");
-    
+
     let pid_file = format!(
         "{}/sway-alttab.pid",
         var("XDG_RUNTIME_DIR").unwrap_or("/tmp".to_string())
@@ -76,7 +89,7 @@ fn cleanup() {
 }
 
 fn main() -> Res<()> {
-    let last_focus = Arc::new(Mutex::new(0));
+    let last_focus = Arc::new(Mutex::new(Vec::new()));
     let mut cur_focus = get_current_focused_id()?;
     let clone = Arc::clone(&last_focus);
 
@@ -98,7 +111,7 @@ fn main() -> Res<()> {
         if let Some(Ok(Window(ev))) = event {
             if ev.change == WindowChange::Focus {
                 let mut last = last_focus.lock().unwrap();
-                *last = cur_focus;
+                last.push(cur_focus);
                 cur_focus = ev.container.id;
             }
         } else {
@@ -106,3 +119,4 @@ fn main() -> Res<()> {
         }
     }
 }
+
