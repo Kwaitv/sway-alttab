@@ -5,8 +5,6 @@ use std::fs::remove_file;
 
 
 use std::fs::File;
-use std::io::{self, Write};
-use daemonize::Daemonize;
 
 
 
