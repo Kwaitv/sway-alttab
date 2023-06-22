@@ -1,6 +1,14 @@
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::env::var;
 use std::fs::remove_file;
-use std::sync::{Arc, Mutex};
+
+
+use std::fs::File;
+use std::io::{self, Write};
+use daemonize::Daemonize;
+
+
 
 use clap::{crate_version, load_yaml, App};
 use swayipc::reply::Event::Window;
@@ -34,6 +42,7 @@ fn handle_signal(last_focused: &Arc<Mutex<Vec<i64>>>) -> Res<()> {
 
     Ok(())
 }
+
 
 fn unbind_key() -> Res<()> {
     let yml = load_yaml!("args.yml");
@@ -70,15 +79,22 @@ fn bind_key() -> Res<()> {
 
 fn start_daemon() -> Res<()> {
     let dir = var("XDG_RUNTIME_DIR").unwrap_or("/tmp".to_string());
+    let stdout_file = File::create("/dev/null")?;
 
     unsafe { signal_hook::register(signal_hook::SIGTERM, cleanup)? };
     unsafe { signal_hook::register(signal_hook::SIGINT, cleanup)? };
 
-    Ok(daemonize::Daemonize::new()
-        .pid_file(format!("{}/sway-alttab.pid", dir))
-        .chown_pid_file(true)
-        .working_directory(dir)
-        .start()?)
+    if true {
+        Ok(daemonize::Daemonize::new()
+            .pid_file(format!("{}/sway-alttab.pid", dir))
+            .chown_pid_file(true)
+            .working_directory(dir)
+            .stdout(stdout_file)
+            .start()?)
+    } else {
+        Ok(())
+    }
+
 }
 
 fn cleanup() {
@@ -95,6 +111,7 @@ fn main() -> Res<()> {
 
     unsafe {
         signal_hook::register(signal_hook::SIGUSR1, move || {
+            println!("ok");
             handle_signal(&clone).unwrap();
         })?
     };
@@ -110,9 +127,28 @@ fn main() -> Res<()> {
         let event = events.next();
         if let Some(Ok(Window(ev))) = event {
             if ev.change == WindowChange::Focus {
+                if cur_focus != ev.container.id {
                 let mut last = last_focus.lock().unwrap();
+                let last_clone = last.clone();
+                let result = last_clone.iter().position(|&r| r == cur_focus);
+                match result {
+                    Some(index) => last.remove(index),
+                    None => -1,
+                };
                 last.push(cur_focus);
+                println!("cur_focus {} ev.container.id {}", cur_focus, ev.container.id);
                 cur_focus = ev.container.id;
+                println!("length {} top {} val {}", last.len(), last[0], cur_focus);
+                }
+            } else if ev.change == WindowChange::Close {
+                let mut last = last_focus.lock().unwrap();
+                let result = last.iter().position(|&r| r == ev.container.id);
+                match result {
+                    Some(index) => last.remove(index),
+                    None => -1,
+                };
+                println!("deleting {}", ev.container.id);
+                cur_focus = last[0];
             }
         } else {
             cleanup();
