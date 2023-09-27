@@ -3,12 +3,12 @@ use std::fs::remove_file;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use std::fs::File;
-
 use clap::{crate_version, load_yaml, App};
 use swayipc::reply::Event::Window;
 use swayipc::reply::WindowChange;
 use swayipc::{Connection, EventType};
+use std::thread::sleep;
+use std::time::Duration;
 
 type Res<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -96,6 +96,11 @@ fn cleanup() {
 
 fn main() -> Res<()> {
     let last_focus = Arc::new(Mutex::new(Vec::new()));
+
+    {
+        sleep(Duration::from_millis(1));
+    }
+
     let mut cur_focus = get_current_focused_id()?;
     let clone = Arc::clone(&last_focus);
 
