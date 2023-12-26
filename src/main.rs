@@ -1,4 +1,5 @@
 use std::env::var;
+use std::fs::File;
 use std::fs::remove_file;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -76,6 +77,7 @@ fn bind_key() -> Res<()> {
 
 fn start_daemon() -> Res<()> {
     let dir = var("XDG_RUNTIME_DIR").unwrap_or("/tmp".to_string());
+    let stdout_file = File::create("/dev/stdout")?;
 
     unsafe { signal_hook::register(signal_hook::SIGTERM, cleanup)? };
     unsafe { signal_hook::register(signal_hook::SIGINT, cleanup)? };
@@ -84,6 +86,7 @@ fn start_daemon() -> Res<()> {
         .pid_file(format!("{}/sway-alttab.pid", dir))
         .chown_pid_file(true)
         .working_directory(dir)
+        .stdout(stdout_file)
         .start()?)
 }
 
