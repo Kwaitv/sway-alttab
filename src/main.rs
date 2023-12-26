@@ -77,7 +77,7 @@ fn bind_key() -> Res<()> {
 
 fn start_daemon() -> Res<()> {
     let dir = var("XDG_RUNTIME_DIR").unwrap_or("/tmp".to_string());
-    let stdout_file = File::create("/dev/null")?;
+    let stdout_file = File::create("/dev/stdout")?;
 
     unsafe { signal_hook::register(signal_hook::SIGTERM, cleanup)? };
     unsafe { signal_hook::register(signal_hook::SIGINT, cleanup)? };
