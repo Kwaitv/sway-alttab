@@ -4,7 +4,7 @@ use swayipc::reply::Event::Window;
 use swayipc::reply::WindowChange;
 use swayipc::{Connection, EventType};
 
-#[cfg(debug_assertions)] use std::fs::File;
+use std::fs::File;
 use std::fs::remove_file;
 use std::env::var;
 use std::sync::Arc;
@@ -83,19 +83,25 @@ fn start_daemon() -> Res<()> {
 
 
     #[cfg(debug_assertions)] {
-    let stdout_file = File::create("/dev/stdout")?;
+    let stdout_file = File::create("/dev/stdout").unwrap();
+    let stderr_file = File::create("/dev/stderr").unwrap();
     Ok(daemonize::Daemonize::new()
         .pid_file(format!("{}/sway-alttab.pid", dir))
         .chown_pid_file(true)
         .working_directory(dir)
         .stdout(stdout_file)
+        .stderr(stderr_file)
         .start()?)
     }
     #[cfg(not(debug_assertions))] {
+    let stdout_file = File::create(format!("{}/sway-alttab-out.log", dir)).unwrap();
+    let stderr_file = File::create(format!("{}/sway-alttab-err.log", dir)).unwrap();
     Ok(daemonize::Daemonize::new()
         .pid_file(format!("{}/sway-alttab.pid", dir))
         .chown_pid_file(true)
         .working_directory(dir)
+        .stdout(stdout_file)
+        .stderr(stderr_file)
         .start()?)
     }
 }
@@ -104,7 +110,8 @@ fn cleanup() {
     let dir = var("XDG_RUNTIME_DIR").unwrap_or("/tmp".to_string());
     remove_file(format!("{}/sway-alttab.pid", dir)).unwrap();
     unbind_key().unwrap();
-    #[cfg(debug_assertions)] {
+    //#[cfg(debug_assertions)] 
+    {
         println!("Exiting sway-alttab");
     }
 }
@@ -121,7 +128,8 @@ fn main() -> Res<()> {
     unsafe {
         let clone = Arc::clone(&last_focus);
         signal_hook::register(signal_hook::SIGUSR1, move || {
-            #[cfg(debug_assertions)] {
+            //#[cfg(debug_assertions)] 
+            {
                 println!("ok");
             }
             handle_signal(&clone).unwrap();
@@ -149,13 +157,13 @@ fn main() -> Res<()> {
                     };
                     last.push(cur_focus);
 
-                    #[cfg(debug_assertions)]
+                    //#[cfg(debug_assertions)]
                     {
                         println!("cur_focus {} ev.container.id {}", cur_focus, ev.container.id);
                     }
 
                     cur_focus = ev.container.id;
-                    #[cfg(debug_assertions)]
+                    //#[cfg(debug_assertions)]
                     {
                         println!("length {} top {} val {}", last.len(), last[0], cur_focus);
                         println!("elements");
@@ -172,7 +180,26 @@ fn main() -> Res<()> {
                     Some(index) => last.remove(index),
                     None => -1,
                 };
-                cur_focus = last[last.len()-2];
+
+                //#[cfg(debug_assertions)]
+                {
+                    println!("cur_focus {} ev.container.id {}", cur_focus, ev.container.id);
+                }
+                if last.len() > 0 {
+                    cur_focus = last[last.len()-1];
+                } else {
+                    cur_focus = 0;
+                }
+
+                //#[cfg(debug_assertions)]
+                {
+                    println!("length {} top {} val {}", last.len(), last[0], cur_focus);
+                    println!("elements");
+                    for element in last.iter(){
+                        print!("{} ", element);
+                    }
+                    println!();
+                }
             }
         } else {
             cleanup();
