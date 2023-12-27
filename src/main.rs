@@ -116,9 +116,9 @@ fn main() -> Res<()> {
     }
 
     let mut cur_focus = get_current_focused_id()?;
-    let clone = Arc::clone(&last_focus);
 
     unsafe {
+        let clone = Arc::clone(&last_focus);
         signal_hook::register(signal_hook::SIGUSR1, move || {
             #[cfg(debug_assertions)] {
                 println!("ok");
