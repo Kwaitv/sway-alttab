@@ -1,13 +1,14 @@
-use std::env::var;
-#[cfg(debug_assertions)] use std::fs::File;
-use std::fs::remove_file;
-use std::sync::Arc;
-use std::sync::Mutex;
-
 use clap::{crate_version, load_yaml, App};
+
 use swayipc::reply::Event::Window;
 use swayipc::reply::WindowChange;
 use swayipc::{Connection, EventType};
+
+#[cfg(debug_assertions)] use std::fs::File;
+use std::fs::remove_file;
+use std::env::var;
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::thread::sleep;
 use std::time::Duration;
 
